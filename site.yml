@@ -32,7 +32,7 @@
       register: create_db
       failed_when: create_db.rc != 0 and create_db.rc !=82
       changed_when: create_db.rc == 0
-      
+
 - name: Install Vector
   hosts: clickhouse
   tasks:
@@ -40,7 +40,7 @@
       ansible.builtin.file:
         path: /opt/vector
         state: directory
-        mode: '0755'
+        mode: '0777'
     - name: "Unarchive a vector that needs to be downloaded"
       ansible.builtin.unarchive:
         src: https://packages.timber.io/vector/0.22.2/vector-0.22.2-x86_64-unknown-linux-musl.tar.gz
