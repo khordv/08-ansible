@@ -36,31 +36,42 @@
       changed_when: create_db.rc == 0
 
 - name: Install Vector
-  hosts: clickhouse
+  hosts: vector
+  handlers:
+    - name: Start vector service
+      become: true
+      ansible.builtin.service:
+        name: vector
+        state: restart
   tasks:
-    - name: "Create a directory if it does not exist"
-      ansible.builtin.file:
-        path: /opt/vector
-        state: directory
-        mode: '0777'
-    - name: "Unarchive a vector that needs to be downloaded"
-      ansible.builtin.unarchive:
-        src: https://packages.timber.io/vector/0.22.2/vector-0.22.2-x86_64-unknown-linux-musl.tar.gz
-        dest: /opt/vector
-        remote_src: yes
-      tags: skip_ansible_lint
+    - name: Get vector distrib
+      ansible.builtin.get_url:
+       url: "https://packages.timber.io/vector/0.28.1/vector-{{ vector_version }}.rpm"
+       dest: "./vector-{{ vector_version }}.rpm"
     - name: "Copy file"
+      become: true
       ansible.builtin.template:
-        src: /home/khordv/repo-github/08-ansible/files/consul/vector.toml.j2
-        dest: /opt/vector/config/vector.toml
-        mode: '0755'
+         src: /home/khordv/repo-github/08-ansible/files/vector.j2
+         dest: /etc/default/vector
+         owner: khordv
+         group: khordv
+         mode: '777'
     - name: "Create a directory"
+      become: true
       ansible.builtin.file:
-        path: /var/lib/vector
-        state: directory
-        mode: '0755'
-    - name: "Run vector"
-      ansible.builtin.command: "vector --config /opt/vector/config/vector.toml:"
-      args:
-        chdir: /opt/vector/bin
-      tags: skip_ansible_lint
+         path: /var/lib/vector
+         state: directory
+         mode: '777'
+    - name: Install vector packages
+      become: true
+      ansible.builtin.yum:
+        name:
+          - vector-{{ vector_version }}.rpm
+      notify: Start vector service
+    - name: Flush handlers
+      meta: flush_handlers
+    - name: "Test vector"
+      ansible.builtin.command: "vector --version"
+      register: run_Result
+    - name: Debug start vector
+      debug: var=run_Result.stdout_lines
